@@ -47,136 +47,86 @@ export default function GoalsPage() {
     setGoals(goals.filter(g => g.id !== id))
   }
 
-  const progressColor = (p: number) => {
-    if (p >= 100) return 'bg-emerald-500'
-    if (p >= 66) return 'bg-indigo-500'
-    if (p >= 33) return 'bg-indigo-400'
-    return 'bg-indigo-300'
-  }
-
+  const barColors = ['bg-indigo-500', 'bg-orange-500', 'bg-teal-500', 'bg-violet-500', 'bg-rose-500', 'bg-amber-500']
   const completedCount = goals.filter(g => g.progress >= 100).length
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Goals</h2>
-          {goals.length > 0 && (
-            <span className="text-sm text-gray-400 dark:text-slate-500">
-              {completedCount}/{goals.length} complete
-            </span>
-          )}
-        </div>
-        <p className="text-sm text-gray-500 dark:text-slate-400">
-          Set and track your long-term goals
-        </p>
+      {/* Header + Add */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <p className="text-sm text-gray-400 dark:text-slate-500">{completedCount} of {goals.length} achieved</p>
+        <form onSubmit={addGoal} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            placeholder="New goal..."
+            className="px-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-52"
+          />
+          <button type="submit" className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm">
+            <Plus size={15} /> Add Goal
+          </button>
+        </form>
       </div>
 
-      {/* Add Goal */}
-      <form
-        onSubmit={addGoal}
-        className="mb-6 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 flex gap-3 items-center"
-      >
-        <input
-          type="text"
-          value={newTitle}
-          onChange={e => setNewTitle(e.target.value)}
-          placeholder="Add a new goal..."
-          className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-600 focus:outline-none"
-        />
-        <button
-          type="submit"
-          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-3.5 py-1.5 rounded-lg transition-colors"
-        >
-          <Plus size={15} />
-          Add
-        </button>
-      </form>
+      {/* Goals — invoice-overview style */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-50 dark:border-slate-800">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Goal Progress</h3>
+        </div>
 
-      {/* Goals List */}
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-28 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      ) : goals.length === 0 ? (
-        <div className="text-center py-20 text-gray-400 dark:text-slate-600">
-          <Target size={36} className="mx-auto mb-3 opacity-25" />
-          <p className="text-sm">No goals yet. Set your first one!</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {goals.map(goal => (
-            <div
-              key={goal.id}
-              className="group bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 p-5"
-            >
-              {/* Title row */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  <span
-                    className={`shrink-0 w-2 h-2 rounded-full transition-colors ${
-                      goal.progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-400'
-                    }`}
+        {loading ? (
+          <div className="p-6 space-y-5">
+            {[1, 2, 3].map(i => <div key={i} className="h-12 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />)}
+          </div>
+        ) : goals.length === 0 ? (
+          <div className="text-center py-20 text-gray-400 dark:text-slate-600">
+            <Target size={36} className="mx-auto mb-3 opacity-25" />
+            <p className="text-sm">No goals yet. Set your first one!</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50 dark:divide-slate-800/60">
+            {goals.map((goal, i) => (
+              <div key={goal.id} className="group px-6 py-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${goal.progress >= 100 ? 'bg-emerald-500' : barColors[i % barColors.length]}`} />
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{goal.title}</h3>
+                    {goal.progress >= 100 && (
+                      <span className="text-xs font-medium px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 rounded-lg shrink-0">Achieved!</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 ml-3 shrink-0">
+                    <span className={`text-sm font-bold tabular-nums ${goal.progress >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-900 dark:text-white'}`}>
+                      {goal.progress}%
+                    </span>
+                    <button onClick={() => deleteGoal(goal.id)} className="text-gray-300 dark:text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${goal.progress >= 100 ? 'bg-emerald-500' : barColors[i % barColors.length]}`}
+                      style={{ width: `${goal.progress}%` }}
+                    />
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={goal.progress}
+                    onChange={e => updateProgress(goal, Number(e.target.value))}
+                    className="w-28 shrink-0"
                   />
-                  <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">
-                    {goal.title}
-                  </h3>
-                </div>
-                <div className="flex items-center gap-3 ml-3 shrink-0">
-                  <span
-                    className={`text-sm font-semibold tabular-nums ${
-                      goal.progress >= 100
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-indigo-600 dark:text-indigo-400'
-                    }`}
-                  >
-                    {goal.progress}%
-                  </span>
-                  <button
-                    onClick={() => deleteGoal(goal.id)}
-                    className="text-gray-300 dark:text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                  >
-                    <Trash2 size={14} />
-                  </button>
                 </div>
               </div>
-
-              {/* Progress Bar */}
-              <div className="h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden mb-3">
-                <div
-                  className={`h-full rounded-full transition-all duration-300 ${progressColor(goal.progress)}`}
-                  style={{ width: `${goal.progress}%` }}
-                />
-              </div>
-
-              {/* Slider */}
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={goal.progress}
-                onChange={e => updateProgress(goal, Number(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-gray-300 dark:text-slate-700 mt-1">
-                <span>0%</span>
-                <span>50%</span>
-                <span>100%</span>
-              </div>
-
-              {goal.progress >= 100 && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-2.5">
-                  Goal achieved!
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

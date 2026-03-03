@@ -10,16 +10,16 @@ type ProjectStatus = 'active' | 'paused' | 'done'
 
 const statusConfig = {
   active: {
-    label: 'Active',
-    color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
+    label: 'In Progress',
+    badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
   },
   paused: {
     label: 'Paused',
-    color: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
+    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
   },
   done: {
     label: 'Done',
-    color: 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400',
+    badge: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400',
   },
 }
 
@@ -41,11 +41,7 @@ export default function ProjectDetailPage() {
   async function fetchData() {
     const [projectRes, subtasksRes] = await Promise.all([
       supabase.from('projects').select('*').eq('id', id).single(),
-      supabase
-        .from('subtasks')
-        .select('*')
-        .eq('project_id', id)
-        .order('created_at', { ascending: true }),
+      supabase.from('subtasks').select('*').eq('project_id', id).order('created_at', { ascending: true }),
     ])
     if (projectRes.data) setProject(projectRes.data)
     if (subtasksRes.data) setSubtasks(subtasksRes.data)
@@ -75,13 +71,8 @@ export default function ProjectDetailPage() {
   }
 
   async function toggleSubtask(subtask: Subtask) {
-    await supabase
-      .from('subtasks')
-      .update({ completed: !subtask.completed })
-      .eq('id', subtask.id)
-    setSubtasks(
-      subtasks.map(s => (s.id === subtask.id ? { ...s, completed: !s.completed } : s))
-    )
+    await supabase.from('subtasks').update({ completed: !subtask.completed }).eq('id', subtask.id)
+    setSubtasks(subtasks.map(s => (s.id === subtask.id ? { ...s, completed: !s.completed } : s)))
   }
 
   async function deleteSubtask(subtaskId: string) {
@@ -106,8 +97,7 @@ export default function ProjectDetailPage() {
   }
 
   const doneCount = subtasks.filter(s => s.completed).length
-  const progress =
-    subtasks.length > 0 ? Math.round((doneCount / subtasks.length) * 100) : 0
+  const progress = subtasks.length > 0 ? Math.round((doneCount / subtasks.length) * 100) : 0
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -121,19 +111,17 @@ export default function ProjectDetailPage() {
       </button>
 
       {/* Project Header Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 p-6 mb-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 p-6 mb-4">
         <div className="flex items-start justify-between gap-4 mb-3">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white leading-tight">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
             {project.title}
           </h2>
           <select
             value={project.status}
             onChange={e => updateStatus(e.target.value as ProjectStatus)}
-            className={`text-xs font-medium px-2.5 py-1 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shrink-0 ${
-              statusConfig[project.status].color
-            }`}
+            className={`text-xs font-semibold px-2.5 py-1 rounded-lg border-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shrink-0 ${statusConfig[project.status].badge}`}
           >
-            <option value="active">Active</option>
+            <option value="active">In Progress</option>
             <option value="paused">Paused</option>
             <option value="done">Done</option>
           </select>
@@ -148,14 +136,12 @@ export default function ProjectDetailPage() {
         {subtasks.length > 0 && (
           <div>
             <div className="flex items-center justify-between text-xs text-gray-400 dark:text-slate-500 mb-1.5">
-              <span>
-                {doneCount} of {subtasks.length} tasks complete
-              </span>
-              <span className="font-medium">{progress}%</span>
+              <span>{doneCount} of {subtasks.length} tasks complete</span>
+              <span className="font-bold text-gray-700 dark:text-slate-300">{progress}%</span>
             </div>
-            <div className="h-1.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                className={`h-full rounded-full transition-all duration-500 ${progress >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -164,9 +150,9 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Checklist Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-50 dark:border-slate-800">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Checklist</h3>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-50 dark:border-slate-800">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">Checklist</h3>
         </div>
 
         {subtasks.length > 0 && (
@@ -174,7 +160,7 @@ export default function ProjectDetailPage() {
             {subtasks.map(subtask => (
               <div
                 key={subtask.id}
-                className="group flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors"
+                className="group flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors"
               >
                 <button
                   onClick={() => toggleSubtask(subtask)}
@@ -209,7 +195,7 @@ export default function ProjectDetailPage() {
         {/* Add Subtask */}
         <form
           onSubmit={addSubtask}
-          className="flex items-center gap-3 px-5 py-3.5 border-t border-gray-50 dark:border-slate-800/60"
+          className="flex items-center gap-3 px-6 py-3.5 border-t border-gray-50 dark:border-slate-800/60"
         >
           <Plus size={15} className="shrink-0 text-gray-300 dark:text-slate-700" />
           <input
@@ -223,7 +209,7 @@ export default function ProjectDetailPage() {
             <button
               type="submit"
               disabled={addingSubtask}
-              className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 disabled:opacity-50 transition-colors"
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 disabled:opacity-50 transition-colors"
             >
               {addingSubtask ? <Loader2 size={12} className="animate-spin" /> : 'Add'}
             </button>

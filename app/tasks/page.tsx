@@ -5,22 +5,29 @@ import { supabase } from '@/lib/supabase'
 import type { Task } from '@/types'
 import { Plus, Trash2, CheckCircle2, Circle } from 'lucide-react'
 
-type Filter = 'all' | 'high' | 'medium' | 'low'
+type Filter = 'all' | 'high' | 'medium' | 'low' | 'pending' | 'done'
 type Priority = 'high' | 'medium' | 'low'
 
 const priorityConfig = {
   high: {
     label: 'High',
+    border: 'border-l-red-500',
+    bg: 'bg-red-50 dark:bg-red-950/20',
     badge: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400',
   },
   medium: {
     label: 'Medium',
+    border: 'border-l-amber-500',
+    bg: 'bg-amber-50 dark:bg-amber-950/20',
     badge: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400',
   },
   low: {
     label: 'Low',
+    border: 'border-l-emerald-500',
+    bg: 'bg-emerald-50 dark:bg-emerald-950/20',
     badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400',
   },
+
 }
 
 export default function TasksPage() {
@@ -72,129 +79,110 @@ export default function TasksPage() {
     if (!error) setTasks(tasks.filter(t => t.id !== id))
   }
 
-  const filtered = filter === 'all' ? tasks : tasks.filter(t => t.priority === filter)
+  const filtered = (() => {
+    if (filter === 'pending') return tasks.filter(t => !t.completed)
+    if (filter === 'done') return tasks.filter(t => t.completed)
+    if (filter === 'all') return tasks
+    return tasks.filter(t => t.priority === filter)
+  })()
   const completedCount = tasks.filter(t => t.completed).length
 
+  const filterTabs = [
+    { key: 'all', label: 'All Tasks' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'done', label: 'Done' },
+    { key: 'high', label: 'High' },
+    { key: 'medium', label: 'Medium' },
+    { key: 'low', label: 'Low' },
+  ]
+
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Tasks</h2>
-          <span className="text-sm text-gray-400 dark:text-slate-500">
-            {completedCount}/{tasks.length} done
-          </span>
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div>
+          <p className="text-xs text-gray-400 dark:text-slate-500">{completedCount} of {tasks.length} completed</p>
         </div>
-        <p className="text-sm text-gray-500 dark:text-slate-400">
-          Manage and prioritize your daily tasks
-        </p>
+        <form onSubmit={addTask} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            placeholder="New task name..."
+            className="px-4 py-2 text-sm rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-52"
+          />
+          <select
+            value={newPriority}
+            onChange={e => setNewPriority(e.target.value as Priority)}
+            className="px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+          >
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <button type="submit" className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors shadow-sm">
+            <Plus size={15} /> Add Task
+          </button>
+        </form>
       </div>
 
-      {/* Add Task */}
-      <form
-        onSubmit={addTask}
-        className="mb-5 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-800 p-4 flex gap-3 items-center"
-      >
-        <input
-          type="text"
-          value={newTitle}
-          onChange={e => setNewTitle(e.target.value)}
-          placeholder="Add a new task..."
-          className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-slate-600 focus:outline-none"
-        />
-        <select
-          value={newPriority}
-          onChange={e => setNewPriority(e.target.value as Priority)}
-          className="text-xs font-medium rounded-lg px-2.5 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
-        >
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-        <button
-          type="submit"
-          className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-3.5 py-1.5 rounded-lg transition-colors"
-        >
-          <Plus size={15} />
-          Add
-        </button>
-      </form>
-
-      {/* Filter Tabs */}
-      <div className="flex gap-2 mb-5">
-        {(['all', 'high', 'medium', 'low'] as Filter[]).map(f => (
+      {/* Filter tabs */}
+      <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+        {filterTabs.map(({ key, label }) => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors capitalize ${
-              filter === f
-                ? 'bg-indigo-600 text-white'
+            key={key}
+            onClick={() => setFilter(key as Filter)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+              filter === key
+                ? 'bg-indigo-600 text-white shadow-sm'
                 : 'bg-white dark:bg-slate-900 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-800'
             }`}
           >
-            {f === 'all' ? 'All tasks' : f}
+            {label}
           </button>
         ))}
       </div>
 
-      {/* Task List */}
+      {/* Task grid */}
       {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4].map(i => (
-            <div
-              key={i}
-              className="h-14 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse"
-            />
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="h-20 bg-gray-100 dark:bg-slate-800 rounded-2xl animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 dark:text-slate-600">
-          <CheckCircle2 size={32} className="mx-auto mb-3 opacity-25" />
-          <p className="text-sm">
-            {filter === 'all' ? 'No tasks yet. Add one above!' : `No ${filter} priority tasks.`}
-          </p>
+        <div className="text-center py-20 text-gray-400 dark:text-slate-600">
+          <CheckCircle2 size={36} className="mx-auto mb-3 opacity-25" />
+          <p className="text-sm">No tasks here. Add one above!</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map(task => (
             <div
               key={task.id}
-              className="group flex items-center gap-3 bg-white dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-800 px-4 py-3.5 hover:border-gray-200 dark:hover:border-slate-700 transition-colors"
+              className={`group relative flex items-start gap-3 p-4 rounded-2xl border-l-4 ${priorityConfig[task.priority].border} ${
+                task.completed
+                  ? 'bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-800'
+                  : `${priorityConfig[task.priority].bg} border border-transparent`
+              }`}
             >
               <button
                 onClick={() => toggleTask(task)}
-                className={`shrink-0 transition-colors ${
-                  task.completed
-                    ? 'text-indigo-500'
-                    : 'text-gray-300 dark:text-slate-700 hover:text-indigo-400'
-                }`}
+                className={`shrink-0 mt-0.5 transition-colors ${task.completed ? 'text-indigo-500' : 'text-gray-300 dark:text-slate-600 hover:text-indigo-400'}`}
               >
-                {task.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                {task.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
               </button>
-
-              <span
-                className={`flex-1 text-sm ${
-                  task.completed
-                    ? 'line-through text-gray-400 dark:text-slate-600'
-                    : 'text-gray-800 dark:text-slate-200'
-                }`}
-              >
-                {task.title}
-              </span>
-
-              <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-md ${
-                  priorityConfig[task.priority].badge
-                }`}
-              >
-                {priorityConfig[task.priority].label}
-              </span>
-
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium leading-snug ${task.completed ? 'line-through text-gray-400 dark:text-slate-600' : 'text-gray-900 dark:text-white'}`}>
+                  {task.title}
+                </p>
+                <span className={`inline-flex mt-2 text-xs font-semibold px-2 py-0.5 rounded-lg ${priorityConfig[task.priority].badge}`}>
+                  {priorityConfig[task.priority].label}
+                </span>
+              </div>
               <button
                 onClick={() => deleteTask(task.id)}
                 className="shrink-0 text-gray-300 dark:text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
               >
-                <Trash2 size={15} />
+                <Trash2 size={14} />
               </button>
             </div>
           ))}

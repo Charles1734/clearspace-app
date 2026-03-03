@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CheckSquare, FolderOpen, FileText, Target } from 'lucide-react'
+import { LayoutDashboard, CheckSquare, FolderOpen, FileText, Target, Settings } from 'lucide-react'
 
 const navItems = [
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/tasks', label: 'Tasks', icon: CheckSquare },
   { href: '/projects', label: 'Projects', icon: FolderOpen },
   { href: '/notes', label: 'Notes', icon: FileText },
@@ -15,52 +16,50 @@ export default function Sidebar() {
   const pathname = usePathname()
 
   return (
-    <aside className="w-56 shrink-0 bg-white dark:bg-slate-900 border-r border-gray-100 dark:border-slate-800 flex flex-col">
+    <aside className="w-16 shrink-0 bg-slate-900 flex flex-col items-center py-5">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-gray-100 dark:border-slate-800">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="1" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.9" />
-              <rect x="8" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.9" />
-              <rect x="1" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.9" />
-              <rect x="8" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.5" />
-            </svg>
-          </div>
-          <span className="text-sm font-semibold text-gray-900 dark:text-white tracking-tight">
-            Clearspace
-          </span>
-        </div>
+      <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center mb-6 shrink-0">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <rect x="1" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.9" />
+          <rect x="8" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.9" />
+          <rect x="1" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.9" />
+          <rect x="8" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.4" />
+        </svg>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-3 space-y-0.5">
+      {/* Nav */}
+      <nav className="flex-1 flex flex-col items-center gap-1 w-full px-2">
         {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href || pathname.startsWith(href + '/')
+          const isActive =
+            href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              title={label}
+              className={`w-full flex items-center justify-center p-2.5 rounded-xl transition-all group relative ${
                 isActive
-                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                  : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-800 dark:hover:text-slate-100'
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                  : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
               }`}
             >
-              <Icon
-                size={17}
-                strokeWidth={isActive ? 2.5 : 1.75}
-                className="shrink-0"
-              />
-              {label}
+              <Icon size={19} strokeWidth={isActive ? 2.5 : 1.75} />
+              <span className="absolute left-full ml-3 px-2.5 py-1 bg-slate-800 text-white text-xs font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl border border-slate-700">
+                {label}
+              </span>
             </Link>
           )
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-gray-100 dark:border-slate-800">
-        <p className="text-xs text-gray-300 dark:text-slate-700">Clearspace v0.1</p>
+      {/* Settings */}
+      <div className="px-2 w-full">
+        <button
+          title="Settings"
+          className="w-full flex items-center justify-center p-2.5 rounded-xl text-slate-600 hover:bg-slate-800 hover:text-slate-300 transition-all"
+        >
+          <Settings size={19} strokeWidth={1.75} />
+        </button>
       </div>
     </aside>
   )

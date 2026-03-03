@@ -5,6 +5,15 @@ import { supabase } from '@/lib/supabase'
 import type { Note } from '@/types'
 import { Plus, Trash2, FileText } from 'lucide-react'
 
+const noteAccentColors = [
+  'bg-indigo-500',
+  'bg-orange-500',
+  'bg-teal-500',
+  'bg-violet-500',
+  'bg-rose-500',
+  'bg-amber-500',
+]
+
 export default function NotesPage() {
   const [notes, setNotes] = useState<Note[]>([])
   const [selected, setSelected] = useState<Note | null>(null)
@@ -25,9 +34,7 @@ export default function NotesPage() {
       .order('updated_at', { ascending: false })
     if (data) {
       setNotes(data)
-      if (data.length > 0) {
-        selectNote(data[0])
-      }
+      if (data.length > 0) selectNote(data[0])
     }
     setLoading(false)
   }
@@ -56,7 +63,6 @@ export default function NotesPage() {
     setSaving(false)
   }, [])
 
-  // Auto-save on edits (debounced 700ms)
   useEffect(() => {
     if (!selected || !isDirty) return
     const timer = setTimeout(() => {
@@ -91,8 +97,7 @@ export default function NotesPage() {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
     if (diffDays === 0) return 'Today'
     if (diffDays === 1) return 'Yesterday'
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -100,18 +105,18 @@ export default function NotesPage() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Notes List Panel */}
-      <div className="w-60 shrink-0 border-r border-gray-100 dark:border-slate-800 flex flex-col bg-white dark:bg-slate-900">
-        <div className="px-4 py-3.5 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-          <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+      {/* Notes sidebar */}
+      <div className="w-64 shrink-0 border-r border-gray-100 dark:border-slate-800 flex flex-col bg-white dark:bg-slate-900">
+        <div className="px-4 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <span className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider">
             Notes
           </span>
           <button
             onClick={createNote}
-            className="p-1 text-gray-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+            className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
             title="New note"
           >
-            <Plus size={17} />
+            <Plus size={14} />
           </button>
         </div>
 
@@ -119,10 +124,7 @@ export default function NotesPage() {
           {loading ? (
             <div className="p-4 space-y-2">
               {[1, 2, 3].map(i => (
-                <div
-                  key={i}
-                  className="h-14 bg-gray-100 dark:bg-slate-800 rounded-lg animate-pulse"
-                />
+                <div key={i} className="h-14 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />
               ))}
             </div>
           ) : notes.length === 0 ? (
@@ -131,42 +133,43 @@ export default function NotesPage() {
               <p className="text-xs">No notes yet</p>
             </div>
           ) : (
-            notes.map(note => (
-              <button
-                key={note.id}
-                onClick={() => selectNote(note)}
-                className={`w-full text-left px-4 py-3 border-b border-gray-50 dark:border-slate-800/50 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors ${
-                  selected?.id === note.id
-                    ? 'bg-indigo-50 dark:bg-indigo-950/40 border-l-2 border-l-indigo-500 pl-3.5'
-                    : ''
-                }`}
-              >
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {note.title}
-                </p>
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
-                  {formatDate(note.updated_at)}
-                </p>
-              </button>
-            ))
+            <div className="p-2 space-y-1">
+              {notes.map((note, i) => (
+                <button
+                  key={note.id}
+                  onClick={() => selectNote(note)}
+                  className={`w-full text-left px-3 py-3 rounded-xl transition-colors ${
+                    selected?.id === note.id
+                      ? 'bg-indigo-50 dark:bg-indigo-950/40'
+                      : 'hover:bg-gray-50 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${noteAccentColors[i % noteAccentColors.length]}`} />
+                    <p className={`text-sm font-medium truncate ${selected?.id === note.id ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-white'}`}>
+                      {note.title}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 pl-3.5">
+                    {formatDate(note.updated_at)}
+                  </p>
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Editor Panel */}
+      {/* Editor */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
         {selected ? (
           <>
-            {/* Editor Header */}
             <div className="flex items-center gap-3 px-8 py-4 border-b border-gray-100 dark:border-slate-800">
               <input
                 type="text"
                 value={editTitle}
-                onChange={e => {
-                  setEditTitle(e.target.value)
-                  setIsDirty(true)
-                }}
-                className="flex-1 text-lg font-semibold bg-transparent text-gray-900 dark:text-white focus:outline-none placeholder:text-gray-300 dark:placeholder:text-slate-700"
+                onChange={e => { setEditTitle(e.target.value); setIsDirty(true) }}
+                className="flex-1 text-lg font-bold bg-transparent text-gray-900 dark:text-white focus:outline-none placeholder:text-gray-300 dark:placeholder:text-slate-700"
                 placeholder="Note title"
               />
               <div className="flex items-center gap-3">
@@ -178,18 +181,14 @@ export default function NotesPage() {
                   className="p-1.5 text-gray-300 dark:text-slate-700 hover:text-red-400 transition-colors"
                   title="Delete note"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={15} />
                 </button>
               </div>
             </div>
 
-            {/* Textarea */}
             <textarea
               value={editBody}
-              onChange={e => {
-                setEditBody(e.target.value)
-                setIsDirty(true)
-              }}
+              onChange={e => { setEditBody(e.target.value); setIsDirty(true) }}
               placeholder="Start writing..."
               className="flex-1 px-8 py-5 text-sm text-gray-700 dark:text-slate-300 bg-transparent focus:outline-none resize-none placeholder:text-gray-300 dark:placeholder:text-slate-700 leading-relaxed"
             />
@@ -200,10 +199,9 @@ export default function NotesPage() {
             <p className="text-sm mb-4">No note selected</p>
             <button
               onClick={createNote}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors"
             >
-              <Plus size={15} />
-              New Note
+              <Plus size={14} /> New Note
             </button>
           </div>
         )}
