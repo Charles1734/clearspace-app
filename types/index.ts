@@ -36,3 +36,14 @@ export interface Goal {
   progress: number
   created_at: string
 }
+
+export interface Contact {
+  id: string
+  name: string
+  email: string | null
+  company: string | null
+  role: string | null
+  notes: string | null
+  tags: string[]
+  created_at: string
+}
