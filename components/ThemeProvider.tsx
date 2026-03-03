@@ -16,18 +16,14 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('light')
-  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
     const stored = localStorage.getItem('clearspace-theme') as Theme | null
     const preferred =
       stored ||
       (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
     setTheme(preferred)
-    if (preferred === 'dark') {
-      document.documentElement.classList.add('dark')
-    }
+    document.documentElement.classList.toggle('dark', preferred === 'dark')
   }, [])
 
   const toggleTheme = () => {
@@ -36,8 +32,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('clearspace-theme', next)
     document.documentElement.classList.toggle('dark', next === 'dark')
   }
-
-  if (!mounted) return <>{children}</>
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
