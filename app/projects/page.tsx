@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Project } from '@/types'
-import { Plus, FolderOpen, X, Loader2, Flag } from 'lucide-react'
+import { Plus, FolderOpen, X, Loader2, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 
 type ProjectStatus = 'active' | 'paused' | 'done'
 type Filter = 'all' | 'active' | 'paused' | 'done'
@@ -16,42 +17,63 @@ const filterTabs: { key: Filter; label: string }[] = [
   { key: 'done', label: 'Done' },
 ]
 
-// Avatar placeholder colors (like the screenshot's SL, AB, AL circles)
-const avatarPalette = [
-  { bg: 'bg-violet-500', initials: 'SL' },
-  { bg: 'bg-pink-500',   initials: 'AB' },
-  { bg: 'bg-emerald-500', initials: 'AL' },
-  { bg: 'bg-amber-500',  initials: 'MK' },
-  { bg: 'bg-sky-500',    initials: 'JD' },
+const cardGradients = [
+  'from-violet-500 via-purple-600 to-indigo-700',
+  'from-amber-400 via-orange-500 to-red-500',
+  'from-emerald-400 via-teal-500 to-cyan-600',
+  'from-rose-400 via-pink-500 to-fuchsia-600',
+  'from-sky-400 via-blue-500 to-indigo-600',
+  'from-lime-400 via-green-500 to-teal-600',
 ]
 
-// Status icon — matches the screenshot's colored indicators
-function StatusIcon({ status }: { status: ProjectStatus }) {
-  if (status === 'done') {
-    return (
-      <span className="w-[15px] h-[15px] rounded-sm bg-teal-500 flex items-center justify-center shrink-0">
-        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
-          <path d="M1 3.5L3.2 6L8 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
-    )
-  }
-  if (status === 'paused') {
-    return (
-      <span className="w-[15px] h-[15px] rounded-full border-[1.5px] border-slate-300 dark:border-slate-600 flex items-center justify-center gap-[2.5px] shrink-0">
-        <span className="w-[2px] h-[7px] bg-slate-300 dark:bg-slate-600 rounded-full" />
-        <span className="w-[2px] h-[7px] bg-slate-300 dark:bg-slate-600 rounded-full" />
-      </span>
-    )
-  }
-  // active — orange circle with arrow
-  return (
-    <span className="w-[15px] h-[15px] rounded-full border-[1.5px] border-amber-400 flex items-center justify-center shrink-0">
-      <svg width="6" height="8" viewBox="0 0 6 8" fill="none">
-        <path d="M1 1L5 4L1 7" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </span>
+const statusPill: Record<ProjectStatus, string> = {
+  active: 'bg-amber-100/80 text-amber-800',
+  paused: 'bg-slate-100/80 text-slate-600',
+  done: 'bg-emerald-100/80 text-emerald-800',
+}
+const statusLabel: Record<ProjectStatus, string> = {
+  active: 'In Progress',
+  paused: 'Paused',
+  done: 'Done',
+}
+
+function CardPattern({ idx }: { idx: number }) {
+  const n = idx % 4
+  if (n === 0) return (
+    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 180 110" preserveAspectRatio="xMidYMid slice">
+      <circle cx="130" cy="20" r="65" fill="white" fillOpacity="0.07" />
+      <circle cx="10" cy="90" r="40" fill="white" fillOpacity="0.05" />
+    </svg>
   )
+  if (n === 1) return (
+    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 180 110" preserveAspectRatio="xMidYMid slice">
+      <rect x="90" y="-10" width="2" height="130" fill="white" fillOpacity="0.08" transform="rotate(20 90 55)" />
+      <rect x="140" y="-10" width="2" height="130" fill="white" fillOpacity="0.06" transform="rotate(20 140 55)" />
+      <rect x="40" y="-10" width="2" height="130" fill="white" fillOpacity="0.05" transform="rotate(20 40 55)" />
+    </svg>
+  )
+  if (n === 2) return (
+    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 180 110" preserveAspectRatio="xMidYMid slice">
+      {[30, 75, 120, 160].map(x => [20, 55, 90].map(y => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r="3.5" fill="white" fillOpacity="0.1" />
+      )))}
+    </svg>
+  )
+  return (
+    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 180 110" preserveAspectRatio="xMidYMid slice">
+      <path d="M -10 80 Q 90 -30 200 70" stroke="white" strokeWidth="2.5" fill="none" strokeOpacity="0.12" />
+      <path d="M -10 100 Q 90 -10 200 90" stroke="white" strokeWidth="1.5" fill="none" strokeOpacity="0.07" />
+    </svg>
+  )
+}
+
+const containerAnim = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07 } },
+}
+const cardAnim = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 120, damping: 18 } },
 }
 
 export default function ProjectsPage() {
@@ -80,7 +102,8 @@ export default function ProjectsPage() {
     const { data, error } = await supabase
       .from('projects')
       .insert({ title: form.title.trim(), description: form.description.trim() || null, status: form.status })
-      .select().single()
+      .select()
+      .single()
     if (!error && data) {
       setProjects([data, ...projects])
       setForm({ title: '', description: '', status: 'active' })
@@ -101,8 +124,8 @@ export default function ProjectsPage() {
 
   return (
     <div className="p-5">
-      {/* Filter tabs */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-5">
         <div className="flex gap-1.5">
           {filterTabs.map(({ key, label }) => (
             <button
@@ -126,140 +149,116 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#1a1a1a] rounded-xl border border-gray-100 dark:border-white/[0.06] overflow-hidden">
-
-        {/* Column headers */}
-        <div className="flex items-center px-4 py-2 border-b border-gray-100 dark:border-white/[0.06]">
-          <div className="flex-1 text-[11px] font-semibold text-gray-400 dark:text-[#555] uppercase tracking-wider">
-            Projects
-          </div>
-          <div className="w-28 text-right text-[11px] font-semibold text-gray-400 dark:text-[#555] uppercase tracking-wider pr-1">
-            Assignees
-          </div>
+      {/* Card grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-52 bg-gray-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+          ))}
         </div>
-
-        {loading ? (
-          <div className="px-4 py-3 space-y-3">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-8 bg-gray-100 dark:bg-white/[0.03] rounded-lg animate-pulse" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-400 dark:text-[#555]">
-            <FolderOpen size={32} className="mx-auto mb-3 opacity-25" />
-            <p className="text-[13px]">No projects here. Create your first one!</p>
-          </div>
-        ) : (
-          <div>
-            {filtered.map((project, i) => (
-              <div
-                key={project.id}
-                className="group flex items-center px-4 py-[9px] border-b border-gray-50 dark:border-white/[0.04] hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
-              >
-                {/* Row select checkbox */}
-                <span className="w-4 h-4 rounded-full border border-gray-200 dark:border-[#333] mr-2.5 shrink-0 group-hover:border-gray-300 dark:group-hover:border-[#444] transition-colors" />
-
-                {/* Status icon */}
-                <span className="mr-2 shrink-0">
-                  <StatusIcon status={project.status} />
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-24 text-gray-400 dark:text-slate-600">
+          <FolderOpen size={36} className="mx-auto mb-3 opacity-25" />
+          <p className="text-[13px]">No projects here. Create your first one!</p>
+        </div>
+      ) : (
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          variants={containerAnim}
+          initial="hidden"
+          animate="show"
+        >
+          {filtered.map((project, i) => (
+            <motion.div
+              key={project.id}
+              variants={cardAnim}
+              whileHover={{
+                y: -6,
+                boxShadow: '0 20px 40px rgba(0,0,0,0.13)',
+                transition: { type: 'spring', stiffness: 300, damping: 22 },
+              }}
+              className="group relative flex flex-col overflow-hidden rounded-2xl border border-gray-100 dark:border-white/[0.06] bg-white dark:bg-[#1c1c1c] shadow-sm"
+            >
+              {/* Gradient header */}
+              <div className={`relative h-32 bg-gradient-to-br ${cardGradients[i % cardGradients.length]} overflow-hidden shrink-0`}>
+                <CardPattern idx={i} />
+                <span className={`absolute top-3 left-3 text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-sm ${statusPill[project.status]}`}>
+                  {statusLabel[project.status]}
                 </span>
-
-                {/* Flag icon */}
-                <Flag size={12} className="mr-2.5 text-gray-300 dark:text-[#444] shrink-0" />
-
-                {/* Project name — clickable */}
-                <Link
-                  href={`/projects/${project.id}`}
-                  className="flex-1 text-[13px] text-gray-800 dark:text-[#d4d4d4] hover:text-gray-900 dark:hover:text-white truncate pr-3 min-w-0"
-                >
-                  {project.title}
-                </Link>
-
-                {/* Description snippet (if any) */}
-                {project.description && (
-                  <span className="hidden lg:flex items-center gap-1 text-[11px] text-gray-400 dark:text-[#555] mr-4 shrink-0 max-w-[140px] truncate">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="shrink-0">
-                      <rect x="1" y="2" width="8" height="1.2" rx="0.6" fill="currentColor" />
-                      <rect x="1" y="4.4" width="6" height="1.2" rx="0.6" fill="currentColor" />
-                      <rect x="1" y="6.8" width="7" height="1.2" rx="0.6" fill="currentColor" />
-                    </svg>
-                    {project.description}
-                  </span>
-                )}
-
-                {/* Assignee avatar */}
-                <div className="flex items-center gap-[-4px] w-28 justify-end shrink-0">
-                  <div className={`w-6 h-6 rounded-full ${avatarPalette[i % avatarPalette.length].bg} flex items-center justify-center text-[9px] font-bold text-white ring-2 ring-white dark:ring-[#1a1a1a]`}>
-                    {avatarPalette[i % avatarPalette.length].initials}
-                  </div>
-                </div>
-
-                {/* Delete (hover only) */}
                 <button
                   onClick={e => deleteProject(e, project.id)}
-                  className="ml-2 p-1 text-gray-300 dark:text-[#444] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                  className="absolute top-2.5 right-2.5 w-6 h-6 rounded-full bg-black/25 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/45 transition-all"
                 >
-                  <X size={13} />
+                  <X size={11} />
                 </button>
               </div>
-            ))}
 
-            {/* + New project row */}
-            <button
-              onClick={() => setShowModal(true)}
-              className="w-full flex items-center gap-2 px-4 py-[9px] text-[13px] text-gray-400 dark:text-[#555] hover:text-gray-600 dark:hover:text-[#888] hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
-            >
-              <Plus size={13} />
-              New project
-            </button>
-          </div>
-        )}
+              {/* Body */}
+              <div className="flex flex-1 flex-col p-5">
+                <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white leading-snug mb-2">
+                  {project.title}
+                </h3>
+                <p className="text-[13px] text-gray-500 dark:text-slate-400 flex-1 line-clamp-2 leading-relaxed">
+                  {project.description || 'No description added yet.'}
+                </p>
+                <div className="flex items-center justify-between mt-4 pt-3.5 border-t border-gray-50 dark:border-white/[0.05]">
+                  <span className="text-[11px] text-gray-400 dark:text-slate-500">
+                    {new Date(project.created_at).toLocaleDateString('en-US', {
+                      month: 'short', day: 'numeric', year: 'numeric',
+                    })}
+                  </span>
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="group/btn flex items-center gap-1 text-[12px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    View Project
+                    <ArrowRight size={12} className="transition-transform group-hover/btn:translate-x-0.5" />
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
 
-        {/* Empty state + New project row */}
-        {!loading && filtered.length === 0 && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="w-full flex items-center gap-2 px-4 py-[9px] border-t border-gray-50 dark:border-white/[0.04] text-[13px] text-gray-400 dark:text-[#555] hover:text-gray-600 dark:hover:text-[#888] hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
-          >
-            <Plus size={13} />
-            New project
-          </button>
-        )}
-      </div>
-
-      {/* Modal */}
+      {/* Create modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-          <div className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 w-full max-w-md p-6">
+          <div
+            className="absolute inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowModal(false)}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative bg-white dark:bg-[#1c1c1c] rounded-2xl shadow-2xl border border-gray-100 dark:border-white/[0.08] w-full max-w-md p-6"
+          >
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">New Project</h3>
-              <button onClick={() => setShowModal(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300">
+              <button onClick={() => setShowModal(false)} className="p-1 text-gray-400 hover:text-gray-600 dark:text-slate-500">
                 <X size={16} />
               </button>
             </div>
-
             <form onSubmit={createProject} className="space-y-3.5">
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-1.5">Title</label>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-1.5">Title *</label>
                 <input
                   type="text"
                   value={form.title}
                   onChange={e => setForm({ ...form, title: e.target.value })}
                   placeholder="Project title"
                   autoFocus
-                  className="w-full px-3 py-2 text-[13px] rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 text-[13px] rounded-lg border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.04] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-1.5">Description <span className="normal-case font-normal">(optional)</span></label>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500 mb-1.5">Description</label>
                 <textarea
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
                   placeholder="What is this project about?"
                   rows={2}
-                  className="w-full px-3 py-2 text-[13px] rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  className="w-full px-3 py-2 text-[13px] rounded-lg border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.04] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                 />
               </div>
               <div>
@@ -267,7 +266,7 @@ export default function ProjectsPage() {
                 <select
                   value={form.status}
                   onChange={e => setForm({ ...form, status: e.target.value as ProjectStatus })}
-                  className="w-full px-3 py-2 text-[13px] rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="w-full px-3 py-2 text-[13px] rounded-lg border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.04] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 >
                   <option value="active">In Progress</option>
                   <option value="paused">Paused</option>
@@ -275,7 +274,7 @@ export default function ProjectsPage() {
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-1">
-                <button type="button" onClick={() => setShowModal(false)} className="px-3 py-1.5 text-[13px] text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200">
+                <button type="button" onClick={() => setShowModal(false)} className="px-3 py-1.5 text-[13px] text-gray-500 hover:text-gray-800 dark:text-slate-400">
                   Cancel
                 </button>
                 <button
@@ -288,7 +287,7 @@ export default function ProjectsPage() {
                 </button>
               </div>
             </form>
-          </div>
+          </motion.div>
         </div>
       )}
     </div>
